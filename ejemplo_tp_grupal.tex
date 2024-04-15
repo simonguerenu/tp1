@@ -35,17 +35,67 @@ iniciales aportados por todas las personas que cooperan. La salida es la lista d
 
 
 \begin{proc}{redistribucionDeLosFrutos}{\In recursos : \TLista{\float }, \In cooperan : \TLista{\bool}}{\TLista{\float }}
-	%    \modifica{parametro1, parametro2,..}
 	\requiere{|recursos| > 0 \yLuego |recursos| = |cooperan| }
-	\asegura{\paraTodo[unalinea]{i}{\ent} {cooperan[i] = True \implicaLuego res[i] = fondoComun(recursos, cooperan)/|recursos|} }
-	\asegura{\paraTodo[unalinea]{i}{\ent} {cooperan[i] = False \implicaLuego res[i] = fondoComun(recursos,cooperan)/|recursos| + recursos[i]} }
+	\asegura{\paraTodo[unalinea]{i}{\ent} {0 \leq i < |cooperan|   \text{ }\yLuego\text{ }  cooperan[i] = True \implicaLuego res[i] = fondoComun(recursos, cooperan)/|recursos|} }
+	\asegura{\paraTodo[unalinea]{i}{\ent} {0 \leq i < |cooperan|   \text{ }\yLuego\text{ }  cooperan[i] = False \implicaLuego res[i] = fondoComun(recursos,cooperan)/|recursos| + recursos[i]} }
 	\aux{fondoComun}{\In recursos : \TLista{\float }, \In cooperan : \TLista{\bool}}{\float }{
 	\sum\limits_{i=0}^{|recursos|-1} \begin{cases} recursos[i] & \text{si } cooperan[i] = \text{True} \\ 0 & \text{si } cooperan[i] = \text{False} \end{cases}
 }
 
 \end{proc}
 
+\subsection{trayectoriaDeLosFrutosIndividualesALargoPlazo}
 
+Actualiza (In/Out) la lista de trayectorias de los los recursos
+de cada uno de los individuos. Inicialmente, cada una de las trayectorias (listas de recursos) contiene un único elemento
+que representa los recursos iniciales del individuo. El procedimiento agrega a las trayectorias los recursos que los
+individuos van obteniendo a medida que se van produciendo los resultados de los eventos en función de la lista de pagos
+que le ofrece la naturaleza (o casa de apuestas) a cada uno de los individuos, las apuestas (o inversiones) que realizan
+los individuos en cada paso temporal, y la lista de individuos que cooperan aportando al fondo monetario común.
+
+
+\begin{proc}{trayectoriaDeLosFrutosIndividualesALargoPlazo}{\Inout trayectorias : \TLista{ \TLista{\float}}, \In cooperan : \TLista{\bool}, \In apuestas : \TLista{\TLista{\float}}, \In pagos : \TLista{\TLista{\float}}, \In eventos : \TLista{\TLista{\nat}}}{}
+	\requiere{|pagos| = |eventos| = |apuestas| = |cooperan|}
+	\requiere{\paraTodo[unalinea]{i}{\ent} {0 \leq i < |pagos| \implicaLuego \paraTodo[unalinea]{n}{\ent} {0 \leq n < |pagos[i]| \implicaLuego pagos[i][n] > 0}}}
+	\requiere{\paraTodo[unalinea]{i}{\ent}{0 \leq i < |trayectoria| \implicaLuego |trayectoria[i]| > 0}}
+	\asegura{\paraTodo[unalinea]{i}{\ent} {0 \leq i < |cooperan| \yLuego cooperan[i] = True \implicaLuego \paraTodo[unalinea]{n}{\ent} {1 \leq n < |trayectorias[i]| \implicaLuego trayectorias[i][n] = \newline \frac{\sum\limits_{a=0}^{|trayectorias|-1} \begin{cases} trayectorias[a][n-1] \times apuestas[a][eventos[a][n-1]] \times pagos[a][eventos[a][n-1]] & 		\text{si } cooperan[i] = \text{True} \\ 0 & \text{si } cooperan[i] = \text{False} \end{cases}}{|trayectorias|} }}\newline\newline}
+	\asegura{\paraTodo[unalinea]{i}{\ent} {0 \leq i < |cooperan| \yLuego cooperan[i] = False \implicaLuego \paraTodo[unalinea]{n}{\ent} {1 \leq n < |trayectorias[i]| \implicaLuego trayectorias[i][n] = \newline  trayectorias[i][n-1] \times apuestas[i][eventos[i][n-1]] \times pagos[i][eventos[i][n-1]] + \newline \frac{\sum\limits_{a=0}^{|trayectorias|-1} \begin{cases} trayectorias[a][n-1] \times apuestas[a][eventos[a][n-1]] \times pagos[a][eventos[a][n-1]] & \text{si } cooperan[i] = \text{True} \\ 0 & \text{si } cooperan[i] = \text{False} \end{cases}}{|trayectorias|} }}}
+
+
+\end{proc}
+
+\subsection{trayectoriaExtrañaEscalera}
+
+Esta función devuelve True sii en la trayectoria de un individuo existe un único punto
+mayor a sus vecinos (llamado máximo local). Un elemento es máximo local si es mayor estricto que sus vecinos
+inmediatos.
+
+
+
+\begin{proc}{trayectoriaExtrañaEscalera}{\In trayectoria : \TLista{\float},}{\bool}
+	\requiere{|trayectoria| > 0}
+	\asegura{|trayectoria| = 1 \implicaLuego res = True}
+	\asegura{(|trayectoria| = 2 \yLuego \paraTodo[unalinea]{i, n}{\ent}{0 \leq i , n< |trayectoria| \implicaLuego (i \neq n \implicaLuego trayectoria[i] \neq trayectoria[n])} \implicaLuego res = True}
+	\asegura{(|trayectoria| > 2 \yLuego \existe[unalinea]{i}{\ent}{0 \leq i < |trayectoria| \implicaLuego (trayectoria[i-1] < trayectoria[i] \land trayectoria[i+1] < trayectoria[i]})) \implica res = True}
+
+
+\end{proc}
+
+\subsection{individuoDecideSiCooperarONo}
+
+Un individuo actualiza su comportamiento cooperativo / no-cooperativo
+(cooperan[individuo]) en función de los recursos iniciales, de quienes cooperan, de los pagos que se le ofrecen a cada
+individuo, de las inversiones o apuestas de cada individuo, y del resultado los eventos que recibe cada individuo,
+eligiendo el comportamiento que maximiza sus recursos individuales luego de que ocurren todos los eventos.
+
+
+
+\begin{proc}{individuoDecideSiCooperarONo}{\In individuo : {\nat}, \In recursos: \TLista{\float}, \Inout cooperan: \TLista{\bool}, \In apuestas: \TLista{\TLista{\float}}, \In pagos: \TLista{\TLista{\float}}, \In eventos: \TLista{\TLista{\nat}}}{\bool}
+	\requiere{}
+	\asegura{}
+
+
+\end{proc}
 
 Y se pueden citar ecuaciones con \verb|\eqref{nombreDeEq}|: \eqref{eq:1}
 
